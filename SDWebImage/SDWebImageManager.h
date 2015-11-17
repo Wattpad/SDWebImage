@@ -183,6 +183,11 @@ SDWebImageManager *manager = [SDWebImageManager sharedManager];
 + (SDWebImageManager *)sharedManager;
 
 /**
+ * Returns an image manager with the specified cache.
+ */
+- (instancetype)initWithCache:(SDImageCache *)cache;
+
+/**
  * Downloads the image at the given URL if not present in cache or return the cached version otherwise.
  *
  * @param url            The URL to the image
