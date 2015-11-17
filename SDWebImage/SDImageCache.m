@@ -454,7 +454,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 - (void)cleanDiskWithCompletionBlock:(SDWebImageNoParamsBlock)completionBlock {
     dispatch_async(self.ioQueue, ^{
         NSURL *diskCacheURL = [NSURL fileURLWithPath:self.diskCachePath isDirectory:YES];
-        NSArray *resourceKeys = @[NSURLIsDirectoryKey, NSURLContentModificationDateKey, NSURLTotalFileAllocatedSizeKey];
+        NSArray *resourceKeys = @[NSURLIsDirectoryKey, NSURLContentModificationDateKey, NSURLTotalFileAllocatedSizeKey, NSURLContentAccessDateKey];
 
         // This enumerator prefetches useful properties for our cache files.
         NSDirectoryEnumerator *fileEnumerator = [_fileManager enumeratorAtURL:diskCacheURL
@@ -465,6 +465,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         NSDate *expirationDate = [NSDate dateWithTimeIntervalSinceNow:-self.maxCacheAge];
         NSMutableDictionary *cacheFiles = [NSMutableDictionary dictionary];
         NSUInteger currentCacheSize = 0;
+        const NSString *dateKey = (self.useLastAccessDate) ? NSURLContentAccessDateKey : NSURLContentModificationDateKey;
 
         // Enumerate all of the files in the cache directory.  This loop has two purposes:
         //
@@ -480,7 +481,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
             }
 
             // Remove files that are older than the expiration date;
-            NSDate *modificationDate = resourceValues[NSURLContentModificationDateKey];
+            NSDate *modificationDate = resourceValues[dateKey];
             if ([[modificationDate laterDate:expirationDate] isEqualToDate:expirationDate]) {
                 [urlsToDelete addObject:fileURL];
                 continue;
@@ -505,7 +506,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
             // Sort the remaining cache files by their last modification time (oldest first).
             NSArray *sortedFiles = [cacheFiles keysSortedByValueWithOptions:NSSortConcurrent
                                                             usingComparator:^NSComparisonResult(id obj1, id obj2) {
-                                                                return [obj1[NSURLContentModificationDateKey] compare:obj2[NSURLContentModificationDateKey]];
+                                                                return [obj1[dateKey] compare:obj2[dateKey]];
                                                             }];
 
             // Delete files until we fall below our desired cache size.

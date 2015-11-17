@@ -63,6 +63,11 @@ typedef void(^SDWebImageCalculateSizeBlock)(NSUInteger fileCount, NSUInteger tot
 @property (assign, nonatomic) NSUInteger maxCacheSize;
 
 /**
+ * If set to YES, last access date will be used when cleaning disk.
+ */
+@property (assign, nonatomic) BOOL useLastAccessDate;
+
+/**
  * Returns global shared cache instance
  *
  * @return SDImageCache global instance
