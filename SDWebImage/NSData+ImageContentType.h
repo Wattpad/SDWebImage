@@ -16,6 +16,15 @@
  */
 + (NSString *)sd_contentTypeForImageData:(NSData *)data;
 
+/**
+ *  Check if the content type for the image data is image/gif
+ *
+ *  @param data the input data
+ *
+ *  @return YES if the content type is image/gif
+ */
++ (BOOL)sd_isContentTypeGIFForImageData:(NSData *)data;
+
 @end
 
 

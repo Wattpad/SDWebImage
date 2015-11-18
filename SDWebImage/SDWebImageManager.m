@@ -8,6 +8,8 @@
 
 #import "SDWebImageManager.h"
 #import <objc/message.h>
+#import "SDImage.h"
+#import "SDWebImageReturnConfig.h"
 
 @interface SDWebImageCombinedOperation : NSObject <SDWebImageOperation>
 
@@ -115,6 +117,18 @@
                                          options:(SDWebImageOptions)options
                                         progress:(SDWebImageDownloaderProgressBlock)progressBlock
                                        completed:(SDWebImageCompletionWithFinishedBlock)completedBlock {
+    return [self downloadImageWithURL:url
+                              options:options
+                         returnConfig:nil
+                             progress:progressBlock
+                            completed:completedBlock];
+}
+
+- (id <SDWebImageOperation>)downloadImageWithURL:(NSURL *)url
+                                         options:(SDWebImageOptions)options
+                                    returnConfig:(SDWebImageReturnConfig *)returnConfig
+                                        progress:(SDWebImageDownloaderProgressBlock)progressBlock
+                                       completed:(SDWebImageCompletionWithFinishedBlock)completedBlock {
     // Invoking this method without a completedBlock is pointless
     NSAssert(completedBlock != nil, @"If you mean to prefetch the image, use -[SDWebImagePrefetcher prefetchURLs] instead");
 
@@ -150,7 +164,7 @@
     }
     NSString *key = [self cacheKeyForURL:url];
 
-    operation.cacheOperation = [self.imageCache queryDiskCacheForKey:key done:^(UIImage *image, SDImageCacheType cacheType) {
+    operation.cacheOperation = [self.imageCache queryDiskCacheForKey:key returnConfig:returnConfig done:^(SDImage *image, SDImageCacheType cacheType) {
         if (operation.isCancelled) {
             @synchronized (self.runningOperations) {
                 [self.runningOperations removeObject:operation];
@@ -183,7 +197,7 @@
                 // ignore image read from NSURLCache if image if cached but force refreshing
                 downloaderOptions |= SDWebImageDownloaderIgnoreCachedResponse;
             }
-            id <SDWebImageOperation> subOperation = [self.imageDownloader downloadImageWithURL:url options:downloaderOptions progress:progressBlock completed:^(UIImage *downloadedImage, NSData *data, NSError *error, BOOL finished) {
+            id <SDWebImageOperation> subOperation = [self.imageDownloader downloadImageWithURL:url options:downloaderOptions returnConfig:returnConfig progress:progressBlock completed:^(SDImage *downloadedImage, NSData *data, NSError *error, BOOL finished) {
                 if (weakOperation.isCancelled) {
                     // Do nothing if the operation was cancelled
                     // See #699 for more details
@@ -216,9 +230,9 @@
                     if (options & SDWebImageRefreshCached && image && !downloadedImage) {
                         // Image refresh hit the NSURLCache cache, do not call the completion block
                     }
-                    else if (downloadedImage && (!downloadedImage.images || (options & SDWebImageTransformAnimatedImage)) && [self.delegate respondsToSelector:@selector(imageManager:transformDownloadedImage:withURL:)]) {
+                    else if (downloadedImage.image && (!downloadedImage.image.images || (options & SDWebImageTransformAnimatedImage)) && [self.delegate respondsToSelector:@selector(imageManager:transformDownloadedImage:withURL:)]) {
                         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-                            UIImage *transformedImage = [self.delegate imageManager:self transformDownloadedImage:downloadedImage withURL:url];
+                            UIImage *transformedImage = [self.delegate imageManager:self transformDownloadedImage:downloadedImage.image withURL:url];
 
                             if (transformedImage && finished) {
                                 BOOL imageWasTransformed = ![transformedImage isEqual:downloadedImage];
@@ -227,14 +241,15 @@
 
                             dispatch_main_sync_safe(^{
                                 if (!weakOperation.isCancelled) {
-                                    completedBlock(transformedImage, nil, SDImageCacheTypeNone, finished, url);
+                                    SDImage *sdImage = [[SDImage alloc] initWithImage:transformedImage];
+                                    completedBlock(sdImage, nil, SDImageCacheTypeNone, finished, url);
                                 }
                             });
                         });
                     }
                     else {
                         if (downloadedImage && finished) {
-                            [self.imageCache storeImage:downloadedImage recalculateFromImage:NO imageData:data forKey:key toDisk:cacheOnDisk];
+                            [self.imageCache storeSdImage:downloadedImage recalculateFromImage:NO imageData:data forKey:key toDisk:cacheOnDisk];
                         }
 
                         dispatch_main_sync_safe(^{
@@ -348,9 +363,9 @@
     return [self downloadImageWithURL:url
                               options:options
                              progress:progressBlock
-                            completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+                            completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
                                 if (completedBlock) {
-                                    completedBlock(image, error, cacheType, finished);
+                                    completedBlock(image.image, error, cacheType, finished);
                                 }
                             }];
 }

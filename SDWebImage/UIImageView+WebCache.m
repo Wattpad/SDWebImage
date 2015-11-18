@@ -9,6 +9,8 @@
 #import "UIImageView+WebCache.h"
 #import "objc/runtime.h"
 #import "UIView+WebCacheOperation.h"
+#import "SDImage.h"
+#import "SDWebImageReturnConfig.h"
 
 static char imageURLKey;
 
@@ -51,9 +53,18 @@ static char imageURLKey;
 }
 
 - (void)sd_setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options imageManager:(SDWebImageManager *)imageManager progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletionBlock)completedBlock {
+    [self sd_setImageWithURL:url placeholderImage:placeholder options:options returnConfig:nil imageManager:imageManager progress:progressBlock completed:completedBlock];
+}
+
+- (void)sd_setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options returnConfig:(SDWebImageReturnConfig *)returnConfig imageManager:(SDWebImageManager *)imageManager progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletionBlock)completedBlock {
     [self sd_cancelCurrentImageLoad];
     objc_setAssociatedObject(self, &imageURLKey, url, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 
+    if ([self isMemberOfClass:[UIImageView class]] && returnConfig.returnDataForGIFs) {
+        NSAssert(!returnConfig.returnDataForGIFs, @"Handling data returned for GIFs is not supported by this category");
+        returnConfig.returnDataForGIFs = NO;
+    }
+    
     if (!(options & SDWebImageDelayPlaceholder)) {
         dispatch_main_async_safe(^{
             self.image = placeholder;
@@ -65,7 +76,7 @@ static char imageURLKey;
             imageManager = SDWebImageManager.sharedManager;
         }
         __weak __typeof(self)wself = self;
-        id <SDWebImageOperation> operation = [imageManager downloadImageWithURL:url options:options progress:progressBlock completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+        id <SDWebImageOperation> operation = [imageManager downloadImageWithURL:url options:options returnConfig:returnConfig progress:progressBlock completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
             if (!wself) return;
             dispatch_main_sync_safe(^{
                 if (!wself) return;
@@ -75,7 +86,7 @@ static char imageURLKey;
                     return;
                 }
                 else if (image) {
-                    wself.image = image;
+                    wself.image = image.image;
                     [wself setNeedsLayout];
                 } else {
                     if ((options & SDWebImageDelayPlaceholder)) {
@@ -117,7 +128,7 @@ static char imageURLKey;
     NSMutableArray *operationsArray = [[NSMutableArray alloc] init];
 
     for (NSURL *logoImageURL in arrayOfURLs) {
-        id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:logoImageURL options:0 progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+        id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:logoImageURL options:0 progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
             if (!wself) return;
             dispatch_main_sync_safe(^{
                 __strong UIImageView *sself = wself;
@@ -171,33 +182,33 @@ static char imageURLKey;
 }
 
 - (void)setImageWithURL:(NSURL *)url completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url placeholderImage:nil options:0 progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url placeholderImage:nil options:0 progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url placeholderImage:placeholder options:0 progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url placeholderImage:placeholder options:0 progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url placeholderImage:placeholder options:options progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url placeholderImage:placeholder options:options progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setImageWithURL:(NSURL *)url placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url placeholderImage:placeholder options:options progress:progressBlock completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url placeholderImage:placeholder options:options progress:progressBlock completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }

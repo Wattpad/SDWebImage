@@ -9,6 +9,7 @@
 #import "UIButton+WebCache.h"
 #import "objc/runtime.h"
 #import "UIView+WebCacheOperation.h"
+#import "SDImage.h"
 
 static char imageURLStorageKey;
 
@@ -69,13 +70,13 @@ static char imageURLStorageKey;
     self.imageURLStorage[@(state)] = url;
 
     __weak __typeof(self)wself = self;
-    id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:url options:options progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+    id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:url options:options progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
         if (!wself) return;
         dispatch_main_sync_safe(^{
             __strong UIButton *sself = wself;
             if (!sself) return;
             if (image) {
-                [sself setImage:image forState:state];
+                [sself setImage:image.image forState:state];
             }
             if (completedBlock && finished) {
                 completedBlock(image, error, cacheType, url);
@@ -112,13 +113,13 @@ static char imageURLStorageKey;
 
     if (url) {
         __weak __typeof(self)wself = self;
-        id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:url options:options progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+        id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:url options:options progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
             if (!wself) return;
             dispatch_main_sync_safe(^{
                 __strong UIButton *sself = wself;
                 if (!sself) return;
                 if (image) {
-                    [sself setBackgroundImage:image forState:state];
+                    [sself setBackgroundImage:image.image forState:state];
                 }
                 if (completedBlock && finished) {
                     completedBlock(image, error, cacheType, url);
@@ -189,25 +190,25 @@ static char imageURLStorageKey;
 }
 
 - (void)setImageWithURL:(NSURL *)url forState:(UIControlState)state completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url forState:state placeholderImage:nil options:0 completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url forState:state placeholderImage:nil options:0 completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setImageWithURL:(NSURL *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url forState:state placeholderImage:placeholder options:0 completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url forState:state placeholderImage:placeholder options:0 completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setImageWithURL:(NSURL *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setImageWithURL:url forState:state placeholderImage:placeholder options:options completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setImageWithURL:url forState:state placeholderImage:placeholder options:options completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
@@ -225,25 +226,25 @@ static char imageURLStorageKey;
 }
 
 - (void)setBackgroundImageWithURL:(NSURL *)url forState:(UIControlState)state completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setBackgroundImageWithURL:url forState:state placeholderImage:nil options:0 completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setBackgroundImageWithURL:url forState:state placeholderImage:nil options:0 completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setBackgroundImageWithURL:(NSURL *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setBackgroundImageWithURL:url forState:state placeholderImage:placeholder options:0 completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setBackgroundImageWithURL:url forState:state placeholderImage:placeholder options:0 completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setBackgroundImageWithURL:(NSURL *)url forState:(UIControlState)state placeholderImage:(UIImage *)placeholder options:(SDWebImageOptions)options completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setBackgroundImageWithURL:url forState:state placeholderImage:placeholder options:options completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setBackgroundImageWithURL:url forState:state placeholderImage:placeholder options:options completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }

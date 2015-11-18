@@ -11,6 +11,9 @@
 #import "UIImage+MultiFormat.h"
 #import <ImageIO/ImageIO.h>
 #import "SDWebImageManager.h"
+#import "NSData+ImageContentType.h"
+#import "SDImage.h"
+#import "SDWebImageReturnConfig.h"
 
 NSString *const SDWebImageDownloadStartNotification = @"SDWebImageDownloadStartNotification";
 NSString *const SDWebImageDownloadReceiveResponseNotification = @"SDWebImageDownloadReceiveResponseNotification";
@@ -19,6 +22,7 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
 
 @interface SDWebImageDownloaderOperation () <NSURLConnectionDataDelegate>
 
+@property (copy, nonatomic) SDWebImageReturnConfig *returnConfig;
 @property (copy, nonatomic) SDWebImageDownloaderProgressBlock progressBlock;
 @property (copy, nonatomic) SDWebImageDownloaderCompletedBlock completedBlock;
 @property (copy, nonatomic) SDWebImageNoParamsBlock cancelBlock;
@@ -46,6 +50,7 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
 
 - (id)initWithRequest:(NSURLRequest *)request
               options:(SDWebImageDownloaderOptions)options
+         returnConfig:(SDWebImageReturnConfig *)returnConfig
              progress:(SDWebImageDownloaderProgressBlock)progressBlock
             completed:(SDWebImageDownloaderCompletedBlock)completedBlock
             cancelled:(SDWebImageNoParamsBlock)cancelBlock {
@@ -54,6 +59,7 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
         _shouldDecompressImages = YES;
         _shouldUseCredentialStorage = YES;
         _options = options;
+        _returnConfig = returnConfig;
         _progressBlock = [progressBlock copy];
         _completedBlock = [completedBlock copy];
         _cancelBlock = [cancelBlock copy];
@@ -320,7 +326,8 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
                 CGImageRelease(partialImageRef);
                 dispatch_main_sync_safe(^{
                     if (self.completedBlock) {
-                        self.completedBlock(image, nil, nil, NO);
+                        SDImage *sdImage = [[SDImage alloc] initWithImage:image];
+                        self.completedBlock(sdImage, nil, nil, NO);
                     }
                 });
             }
@@ -381,6 +388,11 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
         if (self.options & SDWebImageDownloaderIgnoreCachedResponse && responseFromCached) {
             completionBlock(nil, nil, nil, YES);
         } else if (self.imageData) {
+            if (self.returnConfig.returnDataForGIFs && [NSData sd_isContentTypeGIFForImageData:self.imageData]) {
+                SDImage *sdImage = [[SDImage alloc] initWithImageData:self.imageData];
+                completionBlock(sdImage, self.imageData, nil, YES);
+                return;
+            }
             UIImage *image = [UIImage sd_imageWithData:self.imageData];
             NSString *key = [[SDWebImageManager sharedManager] cacheKeyForURL:self.request.URL];
             image = [self scaledImageForKey:key image:image];
@@ -395,7 +407,8 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
                 completionBlock(nil, nil, [NSError errorWithDomain:SDWebImageErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey : @"Downloaded image has 0 pixels"}], YES);
             }
             else {
-                completionBlock(image, self.imageData, nil, YES);
+                SDImage *sdImage = [[SDImage alloc] initWithImage:image];
+                completionBlock(sdImage, self.imageData, nil, YES);
             }
         } else {
             completionBlock(nil, nil, [NSError errorWithDomain:SDWebImageErrorDomain code:0 userInfo:@{NSLocalizedDescriptionKey : @"Image data is nil"}], YES);

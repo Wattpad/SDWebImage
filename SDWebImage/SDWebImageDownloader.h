@@ -10,6 +10,9 @@
 #import "SDWebImageCompat.h"
 #import "SDWebImageOperation.h"
 
+@class SDImage;
+@class SDWebImageReturnConfig;
+
 typedef NS_OPTIONS(NSUInteger, SDWebImageDownloaderOptions) {
     SDWebImageDownloaderLowPriority = 1 << 0,
     SDWebImageDownloaderProgressiveDownload = 1 << 1,
@@ -68,7 +71,7 @@ extern NSString *const SDWebImageDownloadStopNotification;
 
 typedef void(^SDWebImageDownloaderProgressBlock)(NSInteger receivedSize, NSInteger expectedSize);
 
-typedef void(^SDWebImageDownloaderCompletedBlock)(UIImage *image, NSData *data, NSError *error, BOOL finished);
+typedef void(^SDWebImageDownloaderCompletedBlock)(SDImage *image, NSData *data, NSError *error, BOOL finished);
 
 typedef NSDictionary *(^SDWebImageDownloaderHeadersFilterBlock)(NSURL *url, NSDictionary *headers);
 
@@ -175,6 +178,33 @@ typedef NSDictionary *(^SDWebImageDownloaderHeadersFilterBlock)(NSURL *url, NSDi
  */
 - (id <SDWebImageOperation>)downloadImageWithURL:(NSURL *)url
                                          options:(SDWebImageDownloaderOptions)options
+                                        progress:(SDWebImageDownloaderProgressBlock)progressBlock
+                                       completed:(SDWebImageDownloaderCompletedBlock)completedBlock;
+
+/**
+ * Creates a SDWebImageDownloader async downloader instance with a given URL
+ *
+ * The delegate will be informed when the image is finish downloaded or an error has happen.
+ *
+ * @see SDWebImageDownloaderDelegate
+ *
+ * @param url            The URL to the image to download
+ * @param options        The options to be used for this download
+ * @param progressBlock  A block called repeatedly while the image is downloading
+ * @param completedBlock A block called once the download is completed.
+ *                       If the download succeeded, the SDImage parameter is set, in case of error,
+ *                       error parameter is set with the error. The last parameter is always YES
+ *                       if SDWebImageDownloaderProgressiveDownload isn't use. With the
+ *                       SDWebImageDownloaderProgressiveDownload option, this block is called
+ *                       repeatedly with the partial image object and the finished argument set to NO
+ *                       before to be called a last time with the full image and finished argument
+ *                       set to YES. In case of error, the finished argument is always YES.
+ *
+ * @return A cancellable SDWebImageOperation
+ */
+- (id <SDWebImageOperation>)downloadImageWithURL:(NSURL *)url
+                                         options:(SDWebImageDownloaderOptions)options
+                                    returnConfig:(SDWebImageReturnConfig *)returnConfig
                                         progress:(SDWebImageDownloaderProgressBlock)progressBlock
                                        completed:(SDWebImageDownloaderCompletedBlock)completedBlock;
 

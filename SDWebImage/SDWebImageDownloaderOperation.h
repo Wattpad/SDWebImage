@@ -71,6 +71,7 @@ extern NSString *const SDWebImageDownloadFinishNotification;
  */
 - (id)initWithRequest:(NSURLRequest *)request
               options:(SDWebImageDownloaderOptions)options
+         returnConfig:(SDWebImageReturnConfig *)returnConfig
              progress:(SDWebImageDownloaderProgressBlock)progressBlock
             completed:(SDWebImageDownloaderCompletedBlock)completedBlock
             cancelled:(SDWebImageNoParamsBlock)cancelBlock;

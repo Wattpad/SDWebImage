@@ -8,6 +8,7 @@
 
 #import "UIImageView+HighlightedWebCache.h"
 #import "UIView+WebCacheOperation.h"
+#import "SDImage.h"
 
 #define UIImageViewHighlightedWebCacheOperationKey @"highlightedImage"
 
@@ -34,13 +35,13 @@
 
     if (url) {
         __weak __typeof(self)wself = self;
-        id<SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:url options:options progress:progressBlock completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
+        id<SDWebImageOperation> operation = [SDWebImageManager.sharedManager downloadImageWithURL:url options:options progress:progressBlock completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
             if (!wself) return;
             dispatch_main_sync_safe (^
                                      {
                                          if (!wself) return;
                                          if (image) {
-                                             wself.highlightedImage = image;
+                                             wself.highlightedImage = image.image;
                                              [wself setNeedsLayout];
                                          }
                                          if (completedBlock && finished) {
@@ -77,25 +78,25 @@
 }
 
 - (void)setHighlightedImageWithURL:(NSURL *)url completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setHighlightedImageWithURL:url options:0 progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setHighlightedImageWithURL:url options:0 progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setHighlightedImageWithURL:(NSURL *)url options:(SDWebImageOptions)options completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setHighlightedImageWithURL:url options:options progress:nil completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setHighlightedImageWithURL:url options:options progress:nil completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
 
 - (void)setHighlightedImageWithURL:(NSURL *)url options:(SDWebImageOptions)options progress:(SDWebImageDownloaderProgressBlock)progressBlock completed:(SDWebImageCompletedBlock)completedBlock {
-    [self sd_setHighlightedImageWithURL:url options:0 progress:progressBlock completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
+    [self sd_setHighlightedImageWithURL:url options:0 progress:progressBlock completed:^(SDImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
         if (completedBlock) {
-            completedBlock(image, error, cacheType);
+            completedBlock(image.image, error, cacheType);
         }
     }];
 }
