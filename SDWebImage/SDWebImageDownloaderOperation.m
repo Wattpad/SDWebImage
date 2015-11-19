@@ -388,7 +388,8 @@ NSString *const SDWebImageDownloadFinishNotification = @"SDWebImageDownloadFinis
         if (self.options & SDWebImageDownloaderIgnoreCachedResponse && responseFromCached) {
             completionBlock(nil, nil, nil, YES);
         } else if (self.imageData) {
-            if (self.returnConfig.returnDataForGIFs && [NSData sd_isContentTypeGIFForImageData:self.imageData]) {
+            if (self.returnConfig.returnDataForGIFs &&
+                [NSData sd_isContentTypeGIFForImageData:self.imageData]) {
                 SDImage *sdImage = [[SDImage alloc] initWithImageData:self.imageData];
                 completionBlock(sdImage, self.imageData, nil, YES);
                 return;

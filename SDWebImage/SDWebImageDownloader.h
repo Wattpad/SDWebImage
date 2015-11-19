@@ -190,6 +190,7 @@ typedef NSDictionary *(^SDWebImageDownloaderHeadersFilterBlock)(NSURL *url, NSDi
  *
  * @param url            The URL to the image to download
  * @param options        The options to be used for this download
+ * @param returnConfig   The configuration for the returned image.
  * @param progressBlock  A block called repeatedly while the image is downloading
  * @param completedBlock A block called once the download is completed.
  *                       If the download succeeded, the SDImage parameter is set, in case of error,

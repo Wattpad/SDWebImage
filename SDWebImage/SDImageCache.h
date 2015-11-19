@@ -133,7 +133,7 @@ typedef void(^SDWebImageCalculateSizeBlock)(NSUInteger fileCount, NSUInteger tot
 - (void)storeImage:(UIImage *)image recalculateFromImage:(BOOL)recalculate imageData:(NSData *)imageData forKey:(NSString *)key toDisk:(BOOL)toDisk;
 
 /**
- * Store an image into memory and optionally disk cache at the given key.
+ * Store an image (either UIImage or NSData) into memory and optionally disk cache at the given key.
  *
  * @param image       The image to store
  * @param recalculate BOOL indicates if imageData can be used or a new data should be constructed from the UIImage
@@ -156,7 +156,7 @@ typedef void(^SDWebImageCalculateSizeBlock)(NSUInteger fileCount, NSUInteger tot
  * Query the disk cache asynchronously.
  *
  * @param key               The unique key used to store the wanted image
- * @param returnDataForGIFs Return NSData for GIFs if YES
+ * @param returnConfig      The configuration for the returned image.
  */
 - (NSOperation *)queryDiskCacheForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig done:(SDWebImageQueryCompletedBlock)doneBlock;
 
@@ -171,7 +171,7 @@ typedef void(^SDWebImageCalculateSizeBlock)(NSUInteger fileCount, NSUInteger tot
  * Query the memory cache synchronously.
  *
  * @param key               The unique key used to store the wanted image
- * @param returnDataForGIFs Return NSData for GIFs if YES
+ * @param returnConfig      The configuration for the returned image.
  */
 - (SDImage *)sdImageFromMemoryCacheForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig;
 
@@ -186,7 +186,7 @@ typedef void(^SDWebImageCalculateSizeBlock)(NSUInteger fileCount, NSUInteger tot
  * Query the disk cache synchronously after checking the memory cache.
  *
  * @param key               The unique key used to store the wanted image
- * @param returnDataForGIFs Return NSData for GIFs if YES
+ * @param returnConfig      The configuration for the returned image.
  */
 - (SDImage *)sdImageFromDiskCacheForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig;
 

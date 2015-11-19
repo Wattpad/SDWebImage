@@ -340,7 +340,8 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(SDImage *image) {
 - (SDImage *)diskImageForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig {
     NSData *data = [self diskImageDataBySearchingAllPathsForKey:key];
     if (data) {
-        if (returnConfig.returnDataForGIFs && [NSData sd_isContentTypeGIFForImageData:data]) {
+        if (returnConfig.returnDataForGIFs &&
+            [NSData sd_isContentTypeGIFForImageData:data]) {
             return [[SDImage alloc] initWithImageData:data];
         }
         UIImage *image = [UIImage sd_imageWithData:data];
