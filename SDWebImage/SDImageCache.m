@@ -10,6 +10,9 @@
 #import "SDWebImageDecoder.h"
 #import "UIImage+MultiFormat.h"
 #import <CommonCrypto/CommonDigest.h>
+#import "NSData+ImageContentType.h"
+#import "SDImage.h"
+#import "SDWebImageReturnConfig.h"
 
 // See https://github.com/rs/SDWebImage/pull/1141 for discussion
 @interface AutoPurgeCache : NSCache
@@ -52,8 +55,11 @@ BOOL ImageDataHasPNGPreffix(NSData *data) {
     return NO;
 }
 
-FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
-    return image.size.height * image.size.width * image.scale * image.scale;
+FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(SDImage *image) {
+    if (image.image) {
+        return image.image.size.height * image.image.size.width * image.image.scale * image.image.scale;
+    }
+    return image.imageData.length;
 }
 
 @interface SDImageCache ()
@@ -190,6 +196,11 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 }
 
 - (void)storeImage:(UIImage *)image recalculateFromImage:(BOOL)recalculate imageData:(NSData *)imageData forKey:(NSString *)key toDisk:(BOOL)toDisk {
+    SDImage *sdImage = [[SDImage alloc] initWithImage:image];
+    [self storeSdImage:sdImage recalculateFromImage:recalculate imageData:imageData forKey:key toDisk:toDisk];
+}
+
+- (void)storeSdImage:(SDImage *)image recalculateFromImage:(BOOL)recalculate imageData:(NSData *)imageData forKey:(NSString *)key toDisk:(BOOL)toDisk {
     if (!image || !key) {
         return;
     }
@@ -201,7 +212,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         dispatch_async(self.ioQueue, ^{
             NSData *data = imageData;
 
-            if (image && (recalculate || !data)) {
+            if (image.image && (recalculate || !data)) {
 #if TARGET_OS_IPHONE
                 // We need to determine if the image is a PNG or a JPEG
                 // PNGs are easier to detect because they have a unique signature (http://www.w3.org/TR/PNG-Structure.html)
@@ -210,7 +221,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 
                 // If the imageData is nil (i.e. if trying to save a UIImage directly or the image was transformed on download)
                 // and the image has an alpha channel, we will consider it PNG to avoid losing the transparency
-                int alphaInfo = CGImageGetAlphaInfo(image.CGImage);
+                int alphaInfo = CGImageGetAlphaInfo(image.image.CGImage);
                 BOOL hasAlpha = !(alphaInfo == kCGImageAlphaNone ||
                                   alphaInfo == kCGImageAlphaNoneSkipFirst ||
                                   alphaInfo == kCGImageAlphaNoneSkipLast);
@@ -222,13 +233,13 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
                 }
 
                 if (imageIsPng) {
-                    data = UIImagePNGRepresentation(image);
+                    data = UIImagePNGRepresentation(image.image);
                 }
                 else {
-                    data = UIImageJPEGRepresentation(image, (CGFloat)1.0);
+                    data = UIImageJPEGRepresentation(image.image, (CGFloat)1.0);
                 }
 #else
-                data = [NSBitmapImageRep representationOfImageRepsInArray:image.representations usingType: NSJPEGFileType properties:nil];
+                data = [NSBitmapImageRep representationOfImageRepsInArray:image.image.representations usingType: NSJPEGFileType properties:nil];
 #endif
             }
 
@@ -273,18 +284,32 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 }
 
 - (UIImage *)imageFromMemoryCacheForKey:(NSString *)key {
-    return [self.memCache objectForKey:key];
+    return [self sdImageFromMemoryCacheForKey:key returnConfig:nil].image;
+}
+
+- (SDImage *)sdImageFromMemoryCacheForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig {
+    SDImage *image = [self.memCache objectForKey:key];
+    if (returnConfig) {
+        if (image.isGIF) {
+            return returnConfig.returnDataForGIFs && image.imageData ? image : nil;
+        }
+    }
+    return image;
 }
 
 - (UIImage *)imageFromDiskCacheForKey:(NSString *)key {
+    return [self sdImageFromDiskCacheForKey:key returnConfig:nil].image;
+}
+
+- (SDImage *)sdImageFromDiskCacheForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig {
     // First check the in-memory cache...
-    UIImage *image = [self imageFromMemoryCacheForKey:key];
+    SDImage *image = [self sdImageFromMemoryCacheForKey:key returnConfig:returnConfig];
     if (image) {
         return image;
     }
 
     // Second check the disk cache...
-    UIImage *diskImage = [self diskImageForKey:key];
+    SDImage *diskImage = [self diskImageForKey:key returnConfig:returnConfig];
     if (diskImage) {
         NSUInteger cost = SDCacheCostForImage(diskImage);
         [self.memCache setObject:diskImage forKey:key cost:cost];
@@ -312,15 +337,19 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
     return nil;
 }
 
-- (UIImage *)diskImageForKey:(NSString *)key {
+- (SDImage *)diskImageForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig {
     NSData *data = [self diskImageDataBySearchingAllPathsForKey:key];
     if (data) {
+        if (returnConfig.returnDataForGIFs &&
+            [NSData sd_isContentTypeGIFForImageData:data]) {
+            return [[SDImage alloc] initWithImageData:data];
+        }
         UIImage *image = [UIImage sd_imageWithData:data];
         image = [self scaledImageForKey:key image:image];
         if (self.shouldDecompressImages) {
             image = [UIImage decodedImageWithImage:image];
         }
-        return image;
+        return [[SDImage alloc] initWithImage:image];
     }
     else {
         return nil;
@@ -332,6 +361,10 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 }
 
 - (NSOperation *)queryDiskCacheForKey:(NSString *)key done:(SDWebImageQueryCompletedBlock)doneBlock {
+    return [self queryDiskCacheForKey:key returnConfig:nil done:doneBlock];
+}
+
+- (NSOperation *)queryDiskCacheForKey:(NSString *)key returnConfig:(SDWebImageReturnConfig *)returnConfig done:(SDWebImageQueryCompletedBlock)doneBlock {
     if (!doneBlock) {
         return nil;
     }
@@ -342,7 +375,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
     }
 
     // First check the in-memory cache...
-    UIImage *image = [self imageFromMemoryCacheForKey:key];
+    SDImage *image = [self sdImageFromMemoryCacheForKey:key returnConfig:returnConfig];
     if (image) {
         doneBlock(image, SDImageCacheTypeMemory);
         return nil;
@@ -355,7 +388,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         }
 
         @autoreleasepool {
-            UIImage *diskImage = [self diskImageForKey:key];
+            SDImage *diskImage = [self diskImageForKey:key returnConfig:returnConfig];
             if (diskImage) {
                 NSUInteger cost = SDCacheCostForImage(diskImage);
                 [self.memCache setObject:diskImage forKey:key cost:cost];
@@ -454,7 +487,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 - (void)cleanDiskWithCompletionBlock:(SDWebImageNoParamsBlock)completionBlock {
     dispatch_async(self.ioQueue, ^{
         NSURL *diskCacheURL = [NSURL fileURLWithPath:self.diskCachePath isDirectory:YES];
-        NSArray *resourceKeys = @[NSURLIsDirectoryKey, NSURLContentModificationDateKey, NSURLTotalFileAllocatedSizeKey];
+        NSArray *resourceKeys = @[NSURLIsDirectoryKey, NSURLContentModificationDateKey, NSURLTotalFileAllocatedSizeKey, NSURLContentAccessDateKey];
 
         // This enumerator prefetches useful properties for our cache files.
         NSDirectoryEnumerator *fileEnumerator = [_fileManager enumeratorAtURL:diskCacheURL
@@ -465,6 +498,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         NSDate *expirationDate = [NSDate dateWithTimeIntervalSinceNow:-self.maxCacheAge];
         NSMutableDictionary *cacheFiles = [NSMutableDictionary dictionary];
         NSUInteger currentCacheSize = 0;
+        const NSString *dateKey = (self.useLastAccessDate) ? NSURLContentAccessDateKey : NSURLContentModificationDateKey;
 
         // Enumerate all of the files in the cache directory.  This loop has two purposes:
         //
@@ -480,7 +514,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
             }
 
             // Remove files that are older than the expiration date;
-            NSDate *modificationDate = resourceValues[NSURLContentModificationDateKey];
+            NSDate *modificationDate = resourceValues[dateKey];
             if ([[modificationDate laterDate:expirationDate] isEqualToDate:expirationDate]) {
                 [urlsToDelete addObject:fileURL];
                 continue;
@@ -505,7 +539,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
             // Sort the remaining cache files by their last modification time (oldest first).
             NSArray *sortedFiles = [cacheFiles keysSortedByValueWithOptions:NSSortConcurrent
                                                             usingComparator:^NSComparisonResult(id obj1, id obj2) {
-                                                                return [obj1[NSURLContentModificationDateKey] compare:obj2[NSURLContentModificationDateKey]];
+                                                                return [obj1[dateKey] compare:obj2[dateKey]];
                                                             }];
 
             // Delete files until we fall below our desired cache size.

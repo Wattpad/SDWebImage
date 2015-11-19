@@ -37,6 +37,10 @@
     return nil;
 }
 
++ (BOOL)sd_isContentTypeGIFForImageData:(NSData *)data {
+    return [[self sd_contentTypeForImageData:data] isEqualToString:@"image/gif"];
+}
+
 @end
 
 
