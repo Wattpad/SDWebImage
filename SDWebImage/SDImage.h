@@ -25,3 +25,5 @@
 @property (nonatomic, readonly) BOOL isGIF;
 
 @end
+
+// LOL
