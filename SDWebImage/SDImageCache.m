@@ -294,7 +294,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(SDImage *image) {
             return returnConfig.returnDataForGIFs && image.imageData ? image : nil;
         }
     }
-    return image;
+    return image.image ? image : nil;
 }
 
 - (UIImage *)imageFromDiskCacheForKey:(NSString *)key {
