@@ -25,32 +25,31 @@
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGBitmapInfo bitmapInfo = CGImageGetBitmapInfo(imageRef);
 
-    int infoMask = (bitmapInfo & kCGBitmapAlphaInfoMask);
-    BOOL anyNonAlpha = (infoMask == kCGImageAlphaNone ||
-            infoMask == kCGImageAlphaNoneSkipFirst ||
-            infoMask == kCGImageAlphaNoneSkipLast);
-
-    // CGBitmapContextCreate doesn't support kCGImageAlphaNone with RGB.
-    // https://developer.apple.com/library/mac/#qa/qa1037/_index.html
-    if (infoMask == kCGImageAlphaNone && CGColorSpaceGetNumberOfComponents(colorSpace) > 1) {
-        // Unset the old alpha info.
-        bitmapInfo &= ~kCGBitmapAlphaInfoMask;
-
-        // Set noneSkipFirst.
-        bitmapInfo |= kCGImageAlphaNoneSkipFirst;
+    if (CGColorSpaceGetNumberOfComponents(colorSpace) > 1) {
+        // Specifying byte order does not appear to be supported on iOS, and the
+        // recommended component order for RGB is with alpha first, so we can
+        // discard everything except whether it uses an alpha channel or not.
+        int infoMask = (bitmapInfo & kCGBitmapAlphaInfoMask);
+        BOOL hasAlpha = (infoMask != kCGImageAlphaNone &&
+                         infoMask != kCGImageAlphaNoneSkipFirst &&
+                         infoMask != kCGImageAlphaNoneSkipLast);
+        bitmapInfo = (CGBitmapInfo)(hasAlpha ? kCGImageAlphaPremultipliedFirst : kCGImageAlphaNoneSkipFirst);
     }
-            // Some PNGs tell us they have alpha but only 3 components. Odd.
-    else if (!anyNonAlpha && CGColorSpaceGetNumberOfComponents(colorSpace) == 3) {
-        // Unset the old alpha info.
-        bitmapInfo &= ~kCGBitmapAlphaInfoMask;
-        bitmapInfo |= kCGImageAlphaPremultipliedFirst;
+
+    // There's no point using 16 bits per component or higher
+    size_t bitsPerComponent = CGImageGetBitsPerComponent(imageRef);
+    if (bitsPerComponent > 8) {
+        bitsPerComponent = 8;
     }
+
+    // iOS does not support floating point components or specifying byte order
+    bitmapInfo &= ~(kCGBitmapFloatComponents | kCGBitmapByteOrderMask);
 
     // It calculates the bytes-per-row based on the bitsPerComponent and width arguments.
     CGContextRef context = CGBitmapContextCreate(NULL,
             imageSize.width,
             imageSize.height,
-            CGImageGetBitsPerComponent(imageRef),
+            bitsPerComponent,
             0,
             colorSpace,
             bitmapInfo);
