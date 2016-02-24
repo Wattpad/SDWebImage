@@ -46,11 +46,18 @@
         bitmapInfo |= kCGImageAlphaPremultipliedFirst;
     }
 
+    // iOS does not support 16-bit components or floating point components
+    size_t bitsPerComponent = CGImageGetBitsPerComponent(imageRef);
+    if (bitsPerComponent > 8) {
+        bitsPerComponent = 8;
+    }
+    infoMask &= ~kCGBitmapFloatComponents;
+
     // It calculates the bytes-per-row based on the bitsPerComponent and width arguments.
     CGContextRef context = CGBitmapContextCreate(NULL,
             imageSize.width,
             imageSize.height,
-            CGImageGetBitsPerComponent(imageRef),
+            bitsPerComponent,
             0,
             colorSpace,
             bitmapInfo);
