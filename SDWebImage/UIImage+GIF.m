@@ -87,7 +87,9 @@
     CGFloat scale = [UIScreen mainScreen].scale;
 
     if (scale > 1.0f) {
-        NSString *retinaPath = [[NSBundle mainBundle] pathForResource:[name stringByAppendingString:@"@2x"] ofType:@"gif"];
+        NSUInteger imgScale = [NSNumber numberWithFloat:scale].unsignedIntegerValue;
+        NSString *scaleFactor = [NSString stringWithFormat:@"@%lux",imgScale];
+        NSString *retinaPath = [[NSBundle mainBundle] pathForResource:[name stringByAppendingString:scaleFactor] ofType:@"gif"];
 
         NSData *data = [NSData dataWithContentsOfFile:retinaPath];
 
