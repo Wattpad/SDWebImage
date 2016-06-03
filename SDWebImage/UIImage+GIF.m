@@ -88,7 +88,8 @@
 
     if (scale > 1.0f) {
         int imgScale = [NSNumber numberWithFloat:scale].intValue;
-        NSString *retinaPath = [[NSBundle mainBundle] pathForResource:[name stringByAppendingString:[NSString stringWithFormat:@"@%ix",imgScale]] ofType:@"gif"];
+        NSString *scaleFactor = [NSString stringWithFormat:@"@%ix",imgScale];
+        NSString *retinaPath = [[NSBundle mainBundle] pathForResource:[name stringByAppendingString:scaleFactor] ofType:@"gif"];
 
         NSData *data = [NSData dataWithContentsOfFile:retinaPath];
 
