@@ -88,6 +88,7 @@
 
     if (scale > 1.0f) {
         NSUInteger imgScale = [NSNumber numberWithFloat:scale].unsignedIntegerValue;
+        NSLog(@"wasdwasd %lu", imgScale);
         NSString *scaleFactor = [NSString stringWithFormat:@"@%lux",imgScale];
         NSString *retinaPath = [[NSBundle mainBundle] pathForResource:[name stringByAppendingString:scaleFactor] ofType:@"gif"];
 
